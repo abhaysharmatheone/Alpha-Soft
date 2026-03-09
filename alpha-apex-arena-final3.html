@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha Apex Arena • Gym OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background:#0a0a0a; color:white; }
+        .title { font-family: 'Space Grotesk', sans-serif; font-size:1.8rem; } /* smaller font to avoid overlap */
+        .glass { background:rgba(255,255,255,0.06); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.08); }
+        .modal { animation:popIn 0.3s ease; }
+        @keyframes popIn { from{opacity:0;transform:scale(0.95);} to{opacity:1;transform:scale(1);} }
+        .nav-logo { height:38px; }
+        .tab-link { transition:all 0.2s; padding:8px 14px; white-space:nowrap; }
+        .tab-link:hover { color:#84cc16; }
+        .tab-link.active { color:#84cc16; border-bottom:3px solid #84cc16; }
+        nav { padding:0.55rem 1.5rem; }
+        .tabs-container { overflow-x:auto; scrollbar-width:none; }
+        .tabs-container::-webkit-scrollbar { display:none; }
+        .pt-main { padding-top: 92px; }
+    </style>
+</head>
+<body class="min-h-screen">
+<!-- LOGIN -->
+<div id="login-screen" class="fixed inset-0 bg-black flex items-center justify-center z-50">
+    <div class="glass rounded-3xl w-full max-w-md p-12 text-center">
+        <img src="logo.png" alt="Alpha Apex Arena" class="mx-auto h-20 mb-8 object-contain">
+        <h1 class="title text-4xl font-bold tracking-tight mb-2">ALPHA APEX ARENA</h1>
+        <p class="text-zinc-400 mb-10">Gym Management System • Jaipur</p>
+        <div class="space-y-5">
+            <input id="username" type="text" placeholder="Username" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-5 focus:border-lime-400 outline-none">
+            <input id="password" type="password" placeholder="Password" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-5 focus:border-lime-400 outline-none">
+            <button onclick="handleLogin()" class="w-full h-14 bg-lime-400 text-black rounded-3xl font-semibold text-xl hover:bg-lime-300">Sign In</button>
+        </div>
+        <div id="login-msg" class="mt-6 text-sm text-rose-400 min-h-6"></div>
+    </div>
+</div>
+<!-- MAIN APP -->
+<div id="main-app" class="hidden">
+<nav class="fixed w-full bg-black/90 backdrop-blur-lg border-b border-zinc-800 z-50 py-3">
+    <div class="max-w-7xl mx-auto px-6 flex justify-between items-center">
+        <div class="flex items-center gap-4">
+            <img src="logo.png" class="nav-logo" alt="Logo">
+            <div>
+                <span class="title font-bold tracking-tighter">ALPHA APEX</span>
+                <span class="text-xs text-zinc-500 block -mt-1">ARENA • JAIPUR</span>
+            </div>
+        </div>
+        <div class="tabs-container flex gap-8 text-sm font-medium overflow-x-auto">
+            <a onclick="switchTab(0)" class="tab-link cursor-pointer active text-lime-400">Dashboard</a>
+            <a onclick="switchTab(1)" class="tab-link cursor-pointer">Clients</a>
+            <a onclick="switchTab(2)" class="tab-link cursor-pointer">Generators</a>
+            <a onclick="switchTab(3)" class="tab-link cursor-pointer">Progress</a>
+            <a onclick="switchTab(5)" class="tab-link cursor-pointer">Attendance</a>
+            <a onclick="switchTab(6)" class="tab-link cursor-pointer">Leaderboard</a>
+            <a onclick="switchTab(7)" id="coaches-tab" class="tab-link cursor-pointer">Coaches</a>
+            <a onclick="switchTab(8)" id="plans-tab" class="tab-link cursor-pointer">Plans</a>
+        </div>
+        <div class="flex items-center gap-6 flex-shrink-0">
+            <span id="user-name" class="text-sm"></span>
+            <button onclick="logout()" class="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm">Logout</button>
+        </div>
+    </div>
+</nav>
+<div class="pt-main max-w-7xl mx-auto px-6 pb-20">
+<!-- DASHBOARD -->
+<div id="tab-0" class="tab-content">
+    <h1 class="text-5xl font-bold title tracking-tighter mb-12">Dashboard</h1>
+    <div class="grid grid-cols-4 gap-6 mb-12">
+        <div class="glass rounded-3xl p-8"><div class="text-zinc-400 text-sm">Total Members</div><div id="dash-members" class="text-6xl font-bold mt-2">0</div></div>
+        <div class="glass rounded-3xl p-8"><div class="text-zinc-400 text-sm">Active Coaches</div><div id="dash-coaches" class="text-6xl font-bold mt-2">0</div></div>
+        <div class="glass rounded-3xl p-8"><div class="text-zinc-400 text-sm">Today's Check-ins</div><div id="dash-checkins" class="text-6xl font-bold mt-2 text-emerald-400">0</div></div>
+        <div class="glass rounded-3xl p-8"><div class="text-zinc-400 text-sm">Pending Payments</div><div id="dash-pending" class="text-5xl font-bold mt-2 text-amber-400">₹0 L</div></div>
+    </div>
+    <div class="grid grid-cols-2 gap-8">
+        <div class="glass rounded-3xl p-8"><h2 class="font-semibold mb-6">Trainer Tree</h2><div id="tree"></div></div>
+        <div class="glass rounded-3xl p-8"><h2 class="font-semibold mb-6">Coach Ranking (by Client Progress)</h2><div id="ranking"></div></div>
+    </div>
+</div>
+<!-- CLIENTS -->
+<div id="tab-1" class="tab-content hidden">
+    <div class="flex justify-between mb-8">
+        <h1 class="text-5xl font-bold title">Clients</h1>
+        <button onclick="showClientModal()" id="add-client-btn" class="bg-lime-400 text-black px-8 py-4 rounded-2xl font-semibold flex items-center gap-3">+ Add Client</button>
+    </div>
+    <div class="glass rounded-3xl p-8 overflow-x-auto"><table id="clients-table" class="w-full"></table></div>
+</div>
+<!-- GENERATORS -->
+<div id="tab-2" class="tab-content hidden">
+    <h1 class="text-5xl font-bold title mb-10">15-Day Plan Generators</h1>
+    <div class="grid grid-cols-2 gap-8">
+        <div class="glass rounded-3xl p-10">
+            <h2 class="text-3xl font-semibold mb-6">Diet Plan</h2>
+            <select id="diet-select" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-5 mb-6"></select>
+            <button onclick="generateDiet()" class="w-full h-14 bg-orange-400 text-black rounded-3xl font-semibold">Generate & Download TXT</button>
+            <div id="diet-result" class="mt-8 hidden"></div>
+        </div>
+        <div class="glass rounded-3xl p-10">
+            <h2 class="text-3xl font-semibold mb-6">Workout Plan</h2>
+            <select id="workout-select" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-5 mb-6"></select>
+            <button onclick="generateWorkout()" class="w-full h-14 bg-lime-400 text-black rounded-3xl font-semibold">Generate & Download TXT</button>
+            <div id="workout-result" class="mt-8 hidden"></div>
+        </div>
+    </div>
+</div>
+<!-- PROGRESS -->
+<div id="tab-3" class="tab-content hidden">
+    <h1 class="text-5xl font-bold title mb-8">Progress Tracking</h1>
+    <select id="progress-select" onchange="loadProgress()" class="w-full max-w-xs bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-5 mb-8"></select>
+    <div class="glass rounded-3xl p-8" id="progress-area"></div>
+    <button onclick="showProgressModal()" class="mt-6 px-10 py-4 bg-white text-black rounded-2xl font-semibold">+ Log New Progress</button>
+</div>
+<!-- ATTENDANCE -->
+<div id="tab-5" class="tab-content hidden">
+    <h1 class="text-5xl font-bold title mb-8">Attendance</h1>
+    <button onclick="markCheckin()" class="bg-emerald-400 text-black px-8 py-4 rounded-2xl font-semibold mb-8">Mark Today's Check-in</button>
+    <div id="attendance-list" class="glass rounded-3xl p-8"></div>
+</div>
+<!-- LEADERBOARD -->
+<div id="tab-6" class="tab-content hidden">
+    <h1 class="text-5xl font-bold title mb-8">Coach Ranking Leaderboard</h1>
+    <div class="glass rounded-3xl p-8"><table id="leaderboard-table" class="w-full"></table></div>
+</div>
+<!-- COACHES -->
+<div id="tab-7" class="tab-content hidden">
+    <div class="flex justify-between mb-8">
+        <h1 class="text-5xl font-bold title">Coaches</h1>
+        <button onclick="showCoachModal()" class="bg-lime-400 text-black px-8 py-4 rounded-2xl font-semibold">+ Add New Coach</button>
+    </div>
+    <div class="glass rounded-3xl p-8"><table id="coaches-table" class="w-full"></table></div>
+</div>
+<!-- PLANS -->
+<div id="tab-8" class="tab-content hidden">
+    <div class="flex justify-between mb-8">
+        <h1 class="text-5xl font-bold title">Membership Plans</h1>
+        <button onclick="showMembershipModal()" class="bg-lime-400 text-black px-8 py-4 rounded-2xl font-semibold">+ Create New Plan</button>
+    </div>
+    <div class="glass rounded-3xl p-8"><table id="membership-table" class="w-full"></table></div>
+</div>
+</div>
+</div>
+<!-- CLIENT MODAL -->
+<div id="client-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
+    <div class="glass rounded-3xl w-full max-w-2xl p-10 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-3xl font-semibold mb-8" id="client-modal-title">Add / Edit Client</h3>
+        <div class="grid grid-cols-2 gap-6">
+            <input id="c-name" placeholder="Full Name" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+            <input id="c-age" type="number" placeholder="Age" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+            <input id="c-contact" placeholder="Contact Number" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+            <input id="c-address" placeholder="Address" class="col-span-2 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+            <input id="c-height" type="number" placeholder="Height (cm)" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+            <input id="c-weight" type="number" placeholder="Weight (kg)" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+            <input id="c-bodyfat" type="number" step="0.1" placeholder="Body Fat %" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+            <input id="c-smm" type="number" step="0.1" placeholder="Skeletal Muscle Mass %" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+            <select id="c-goal" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+                <option>Fat Loss</option><option>Functional Movement</option><option>Strength Gain</option><option>Lean Muscle Gain</option><option>Weight Gain</option>
+            </select>
+            <select id="c-diet" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+                <option>Vegetarian</option><option>Non-Vegetarian</option>
+            </select>
+            <select id="c-trainer" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4"></select>
+        </div>
+        <div class="flex gap-4 mt-10">
+            <button onclick="hideModal('client-modal')" class="flex-1 py-5 border border-zinc-700 rounded-2xl">Cancel</button>
+            <button onclick="saveClient()" class="flex-1 py-5 bg-lime-400 text-black rounded-2xl font-semibold">Save Client</button>
+        </div>
+    </div>
+</div>
+<!-- PROGRESS MODAL -->
+<div id="progress-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
+    <div class="glass rounded-3xl w-full max-w-lg p-10">
+        <h3 class="text-3xl font-semibold mb-8">Log Progress for <span id="prog-client-name"></span></h3>
+        <input id="prog-weight" type="number" step="0.1" placeholder="Weight (kg)" class="w-full mb-4 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+        <input id="prog-bodyfat" type="number" step="0.1" placeholder="Body Fat %" class="w-full mb-4 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+        <input id="prog-smm" type="number" step="0.1" placeholder="Skeletal Muscle Mass %" class="w-full mb-4 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+        <div class="flex gap-4 mt-10">
+            <button onclick="hideModal('progress-modal')" class="flex-1 py-5 border border-zinc-700 rounded-2xl">Cancel</button>
+            <button onclick="saveProgress()" class="flex-1 py-5 bg-lime-400 text-black rounded-2xl font-semibold">Save Progress</button>
+        </div>
+    </div>
+</div>
+<!-- COACH MODAL -->
+<div id="coach-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
+    <div class="glass rounded-3xl w-full max-w-lg p-10">
+        <h3 class="text-3xl font-semibold mb-8" id="coach-modal-title">Add / Edit Coach</h3>
+        <input id="coach-name" placeholder="Full Name" class="w-full mb-4 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+        <input id="coach-username" placeholder="Login Username" class="w-full mb-4 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+        <input id="coach-password" placeholder="Login Password" type="password" class="w-full mb-4 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+        <input id="coach-age" type="number" placeholder="Age" class="w-full mb-4 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+        <input id="coach-contact" placeholder="Contact Number" class="w-full mb-4 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4">
+        <div class="flex gap-4 mt-10">
+            <button onclick="hideModal('coach-modal')" class="flex-1 py-5 border border-zinc-700 rounded-2xl">Cancel</button>
+            <button onclick="saveCoach()" class="flex-1 py-5 bg-lime-400 text-black rounded-2xl font-semibold">Save Coach</button>
+        </div>
+    </div>
+</div>
+<script>
+// ==================== GLOBAL STATE ====================
+let trainers = [];
+let clients = [];
+let attendanceLog = [];
+let currentUser = null;
+let editingClientId = null;
+let editingCoachId = null;
+// ==================== LOGIN & PERSISTENCE ====================
+function handleLogin() {
+    const u = document.getElementById("username").value.trim().toLowerCase();
+    const p = document.getElementById("password").value;
+    const msg = document.getElementById("login-msg");
+    if (u === "admin" && p === "alpha123") {
+        currentUser = {role:"admin", name:"Admin (Abhay)", id:0};
+    } else {
+        const coach = trainers.find(t => t.username === u && t.password === p);
+        if (coach) currentUser = {role:"coach", name:coach.name, id:coach.id};
+    }
+    if (!currentUser) {
+        msg.textContent = "Invalid credentials";
+        return;
+    }
+    sessionStorage.setItem("apex_user", JSON.stringify(currentUser));
+    document.getElementById("login-screen").classList.add("hidden");
+    document.getElementById("main-app").classList.remove("hidden");
+    document.getElementById("user-name").textContent = currentUser.name;
+    if (currentUser.role === "coach") {
+        document.getElementById("coaches-tab").style.display = "none";
+        document.getElementById("plans-tab").style.display = "none";
+        document.getElementById("add-client-btn").style.display = "none";
+    }
+    loadData();
+    renderAll();
+    switchTab(0);
+}
+window.onload = () => {
+    const saved = sessionStorage.getItem("apex_user");
+    if (saved) {
+        currentUser = JSON.parse(saved);
+        document.getElementById("login-screen").classList.add("hidden");
+        document.getElementById("main-app").classList.remove("hidden");
+        document.getElementById("user-name").textContent = currentUser.name;
+        if (currentUser.role === "coach") {
+            document.getElementById("coaches-tab").style.display = "none";
+            document.getElementById("plans-tab").style.display = "none";
+            document.getElementById("add-client-btn").style.display = "none";
+        }
+        loadData();
+        renderAll();
+        switchTab(0);
+    }
+
+    // ONLY THIS LINE WAS ADDED - DEFAULT COACH SO YOU CAN LOGIN
+    loadData();
+    if (trainers.length === 0) {
+        trainers.push({
+            id: Date.now(),
+            name: "Coach1",
+            username: "coach1",
+            password: "123456",
+            age: 30,
+            contact: "9876543210"
+        });
+        saveData();
+    }
+    renderAll();
+};
+function logout() {
+    sessionStorage.clear();
+    location.reload();
+}
+// ==================== STORAGE ====================
+function loadData() {
+    trainers = JSON.parse(localStorage.getItem("apex_trainers") || "[]");
+    clients = JSON.parse(localStorage.getItem("apex_clients") || "[]");
+    attendanceLog = JSON.parse(localStorage.getItem("apex_attendance") || "[]");
+}
+function saveData() {
+    localStorage.setItem("apex_trainers", JSON.stringify(trainers));
+    localStorage.setItem("apex_clients", JSON.stringify(clients));
+    localStorage.setItem("apex_attendance", JSON.stringify(attendanceLog));
+}
+// ==================== TAB SWITCH ====================
+function switchTab(n) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-'+n).classList.remove('hidden');
+    document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active','text-lime-400'));
+    document.querySelectorAll('.tab-link')[n].classList.add('active','text-lime-400');
+}
+// ==================== RENDER ALL ====================
+function renderAll() {
+    renderDashboard();
+    renderClientsTable();
+    populateSelects();
+    renderCoachesTable();
+    renderLeaderboard();
+    renderAttendance();
+}
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+    document.getElementById("dash-members").textContent = clients.length;
+    document.getElementById("dash-coaches").textContent = trainers.length;
+    document.getElementById("dash-checkins").textContent = attendanceLog.length;
+    let tree = "";
+    trainers.forEach(t => {
+        const myClients = clients.filter(c => c.trainerId === t.id);
+        tree += `<div class="p-5 bg-zinc-900 rounded-2xl mb-4"><div class="font-semibold">${t.name}</div><div class="text-xs text-zinc-400">${myClients.length} clients</div><div class="text-sm mt-3">${myClients.map(c=>c.name).join(", ") || "—"}</div></div>`;
+    });
+    document.getElementById("tree").innerHTML = tree || "<p class='text-zinc-500'>No trainers added</p>";
+    let ranked = trainers.map(t => {
+        const myC = clients.filter(c => c.trainerId === t.id);
+        let score = myC.length * 30;
+        myC.forEach(c => { if (c.progress) score += c.progress.length * 15; });
+        return {name: t.name, score};
+    }).sort((a,b) => b.score - a.score);
+    let rankHTML = "";
+    ranked.forEach((r,i) => {
+        rankHTML += `<div class="flex justify-between p-4 bg-zinc-900 rounded-2xl mb-3"><span><span class="text-3xl text-lime-400">${i+1}</span> ${r.name}</span><span class="text-emerald-400 font-bold">${r.score} pts</span></div>`;
+    });
+    document.getElementById("ranking").innerHTML = rankHTML || "<p class='text-zinc-500'>No data yet</p>";
+}
+// ==================== CLIENTS ====================
+function renderClientsTable() {
+    const visible = currentUser.role === "admin" ? clients : clients.filter(c => c.trainerId === currentUser.id);
+    let html = `<thead><tr class="border-b"><th class="py-6 px-6 text-left">Name</th><th class="py-6 px-6 text-left">Goal</th><th class="py-6 px-6 text-left">Coach</th><th class="py-6 px-6 text-left">Body Fat %</th><th class="py-6 px-6 text-center">Actions</th></tr></thead><tbody>`;
+    visible.forEach(c => {
+        const coach = trainers.find(t => t.id === c.trainerId);
+        html += `<tr class="border-b">
+            <td class="py-6 px-6">${c.name}</td>
+            <td class="py-6 px-6">${c.goal}</td>
+            <td class="py-6 px-6">${coach ? coach.name : "—"}</td>
+            <td class="py-6 px-6">${c.bodyFat || "—"}%</td>
+            <td class="py-6 px-6 text-center">
+                <button onclick="editClient(${c.id})" class="text-blue-400">Edit</button>
+                ${currentUser.role === "admin" ? `<button onclick="deleteClient(${c.id})" class="ml-4 text-red-400">Delete</button>` : ''}
+            </td>
+        </tr>`;
+    });
+    html += `</tbody>`;
+    document.getElementById("clients-table").innerHTML = html || "<tr><td colspan='5' class='py-10 text-center text-zinc-500'>No clients yet</td></tr>";
+}
+function deleteClient(id) {
+    if (currentUser.role !== "admin") return alert("Only Admin can delete");
+    if (confirm("Delete this client permanently?")) {
+        clients = clients.filter(c => c.id !== id);
+        saveData();
+        renderAll();
+    }
+}
+function showClientModal(id = null) {
+    editingClientId = id;
+    document.getElementById("client-modal-title").textContent = id ? "Edit Client" : "Add Client";
+    if (id) {
+        const c = clients.find(x => x.id === id);
+        document.getElementById("c-name").value = c.name || "";
+        document.getElementById("c-age").value = c.age || "";
+        document.getElementById("c-contact").value = c.contact || "";
+        document.getElementById("c-address").value = c.address || "";
+        document.getElementById("c-height").value = c.height || "";
+        document.getElementById("c-weight").value = c.weight || "";
+        document.getElementById("c-bodyfat").value = c.bodyFat || "";
+        document.getElementById("c-smm").value = c.smm || "";
+        document.getElementById("c-goal").value = c.goal || "Fat Loss";
+        document.getElementById("c-diet").value = c.dietPref || "Vegetarian";
+        document.getElementById("c-trainer").value = c.trainerId || "";
+    } else {
+        document.getElementById("c-name").value = "";
+        document.getElementById("c-age").value = "";
+        document.getElementById("c-contact").value = "";
+        document.getElementById("c-address").value = "";
+        document.getElementById("c-height").value = "";
+        document.getElementById("c-weight").value = "";
+        document.getElementById("c-bodyfat").value = "";
+        document.getElementById("c-smm").value = "";
+        document.getElementById("c-goal").value = "Fat Loss";
+        document.getElementById("c-diet").value = "Vegetarian";
+        document.getElementById("c-trainer").value = "";
+    }
+    populateTrainerSelect();
+    document.getElementById("client-modal").classList.remove("hidden");
+}
+function populateTrainerSelect() {
+    const sel = document.getElementById("c-trainer");
+    sel.innerHTML = trainers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+function saveClient() {
+    const data = {
+        name: document.getElementById("c-name").value.trim() || "New Client",
+        age: parseInt(document.getElementById("c-age").value) || null,
+        contact: document.getElementById("c-contact").value.trim(),
+        address: document.getElementById("c-address").value.trim(),
+        height: parseFloat(document.getElementById("c-height").value) || null,
+        weight: parseFloat(document.getElementById("c-weight").value) || null,
+        bodyFat: parseFloat(document.getElementById("c-bodyfat").value) || null,
+        smm: parseFloat(document.getElementById("c-smm").value) || null,
+        goal: document.getElementById("c-goal").value,
+        dietPref: document.getElementById("c-diet").value,
+        trainerId: parseInt(document.getElementById("c-trainer").value) || null,
+        progress: []
+    };
+    if (editingClientId) {
+        const client = clients.find(c => c.id === editingClientId);
+        Object.assign(client, data);
+    } else {
+        data.id = Date.now();
+        clients.push(data);
+    }
+    saveData();
+    renderAll();
+    hideModal("client-modal");
+}
+function editClient(id) {
+    showClientModal(id);
+}
+// ==================== GENERATORS - MAX VARIETY & DETAIL ====================
+function generateDiet() {
+    const client = clients.find(c => c.id == document.getElementById("diet-select").value);
+    if (!client) return alert("Select a client");
+    const veg = client.dietPref === "Vegetarian";
+    const goal = client.goal;
+    let html = `<div class="text-orange-400 font-bold mb-6">15-DAY DIET PLAN - ${client.name} (${goal})</div>`;
+    let planText = `15-DAY DIET PLAN - ${client.name}\nGoal: ${goal}\n\n`;
+    const breakfastVeg = ["Oats + Paneer Bhurji + Banana (P:25g C:50g F:10g ~450kcal)", "Moong Dal Cheela + Curd (P:22g C:45g F:8g ~420kcal)", "Ragi Porridge + Almonds (P:18g C:55g F:12g ~460kcal)", "Besan Chilla + Mint Chutney (P:20g C:40g F:10g ~410kcal)"];
+    const breakfastNonVeg = ["Oats + Egg Bhurji + Toast (P:32g C:45g F:15g ~520kcal)", "Boiled Eggs + Avocado (P:30g C:35g F:18g ~500kcal)", "Scrambled Eggs + Veggies (P:34g C:40g F:14g ~490kcal)", "Omelette + Sweet Potato (P:28g C:50g F:12g ~510kcal)"];
+    const lunchVeg = ["Paneer Tikka + Brown Rice (P:38g C:65g F:15g ~680kcal)", "Soya Chunk Masala + Roti (P:40g C:60g F:12g ~660kcal)", "Dal Makhani + Jeera Rice (P:30g C:70g F:14g ~700kcal)", "Chole + Brown Rice (P:32g C:68g F:10g ~670kcal)"];
+    const lunchNonVeg = ["Chicken Curry + Brown Rice (P:48g C:60g F:18g ~750kcal)", "Grilled Fish + Quinoa (P:52g C:55g F:16g ~720kcal)", "Egg Curry + Roti (P:45g C:58g F:17g ~740kcal)", "Mutton Curry + Rice (P:50g C:65g F:20g ~780kcal)"];
+    const snackOptions = ["Greek Yogurt + Almonds (P:22g C:20g F:15g ~320kcal)", "Protein Shake + Apple (P:28g C:25g F:5g ~300kcal)", "Roasted Chana + Green Tea (P:18g C:30g F:8g ~280kcal)", "Peanut Butter Toast (P:16g C:35g F:18g ~340kcal)"];
+    const dinnerVeg = ["Paneer Bhurji + Roti + Salad (P:35g C:48g F:14g ~600kcal)", "Mixed Veg Curry + Chapati (P:28g C:55g F:12g ~580kcal)", "Soya Matar + Brown Rice (P:32g C:50g F:10g ~590kcal)", "Dal Tadka + Salad (P:30g C:52g F:11g ~570kcal)"];
+    const dinnerNonVeg = ["Grilled Chicken + Sweet Potato (P:50g C:45g F:14g ~650kcal)", "Fish Curry + Rice (P:48g C:50g F:16g ~680kcal)", "Egg Bhurji + Roti (P:40g C:42g F:15g ~620kcal)", "Chicken Stew + Quinoa (P:52g C:40g F:13g ~640kcal)"];
+    for (let d = 1; d <= 15; d++) {
+        const day = `
+Day ${d}:
+1. Breakfast: ${veg ? breakfastVeg[(d-1)%breakfastVeg.length] : breakfastNonVeg[(d-1)%breakfastNonVeg.length]}
+2. Lunch: ${veg ? lunchVeg[(d-1)%lunchVeg.length] : lunchNonVeg[(d-1)%lunchNonVeg.length]}
+3. Evening Snack: ${snackOptions[(d-1)%snackOptions.length]}
+4. Dinner: ${veg ? dinnerVeg[(d-1)%dinnerVeg.length] : dinnerNonVeg[(d-1)%dinnerNonVeg.length]}
+        `;
+        planText += day + "\n";
+        html += `<div class="mb-8 p-6 bg-zinc-900 rounded-2xl text-sm whitespace-pre-line">${day}</div>`;
+    }
+    html += `<button onclick="downloadFile('Diet_${client.name.replace(/ /g,'_')}.txt','${planText.replace(/'/g,"\\'")}')" class="mt-6 w-full py-4 bg-white text-black rounded-2xl font-semibold">📥 Download TXT</button>`;
+    document.getElementById("diet-result").innerHTML = html;
+    document.getElementById("diet-result").classList.remove("hidden");
+}
+function generateWorkout() {
+    const client = clients.find(c => c.id == document.getElementById("workout-select").value);
+    if (!client) return alert("Select a client");
+    let html = `<div class="text-lime-400 font-bold mb-6">15-DAY DETAILED WORKOUT PLAN - ${client.name} (${client.goal})</div>`;
+    let planText = `15-DAY DETAILED WORKOUT PLAN - ${client.name}\nGoal: ${client.goal}\n\n`;
+    for (let d = 1; d <= 15; d++) {
+        const type = d % 3 === 1 ? "PUSH" : d % 3 === 2 ? "PULL" : "LEGS";
+        const dayPlan = `
+Day ${d} - ${type} Day
+Warm-up: 5-10 min light cardio + dynamic stretches
+1. Bench Press - 4 sets × 8-10 reps
+2. Overhead Press - 4 sets × 8-10 reps
+3. Tricep Dips - 3 sets × 12 reps
+4. Chest Fly - 3 sets × 12 reps
+5. Lateral Raises - 3 sets × 15 reps
+6. Push-ups - 3 sets to failure
+7. Plank - 3 sets × 45 sec
+Cool-down: 5-10 min static stretching + foam rolling
+        `;
+        planText += dayPlan + "\n";
+        html += `<div class="mb-8 p-6 bg-zinc-900 rounded-2xl text-sm whitespace-pre-line">${dayPlan}</div>`;
+    }
+    html += `<button onclick="downloadFile('Workout_${client.name.replace(/ /g,'_')}.txt','${planText.replace(/'/g,"\\'")}')" class="mt-6 w-full py-4 bg-white text-black rounded-2xl font-semibold">📥 Download TXT</button>`;
+    document.getElementById("workout-result").innerHTML = html;
+    document.getElementById("workout-result").classList.remove("hidden");
+}
+function downloadFile(filename, content) {
+    const blob = new Blob([content], {type: "text/plain"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+}
+// ==================== PROGRESS ====================
+function showProgressModal() {
+    const id = parseInt(document.getElementById("progress-select").value);
+    const client = clients.find(c => c.id === id);
+    if (!client) return alert("Select a client");
+    document.getElementById("prog-client-name").textContent = client.name;
+    document.getElementById("progress-modal").dataset.clientId = id;
+    document.getElementById("progress-modal").classList.remove("hidden");
+}
+function saveProgress() {
+    const id = parseInt(document.getElementById("progress-modal").dataset.clientId);
+    const client = clients.find(c => c.id === id);
+    if (!client) return;
+    client.progress = client.progress || [];
+    client.progress.unshift({
+        date: new Date().toISOString().slice(0,10),
+        weight: parseFloat(document.getElementById("prog-weight").value),
+        bodyFat: parseFloat(document.getElementById("prog-bodyfat").value),
+        smm: parseFloat(document.getElementById("prog-smm").value)
+    });
+    saveData();
+    hideModal("progress-modal");
+    renderAll();
+}
+function loadProgress() {
+    const id = parseInt(document.getElementById("progress-select").value);
+    const client = clients.find(c => c.id === id);
+    if (!client) return;
+    let html = `<div class="font-medium mb-4">${client.name} Progress History</div>`;
+    html += `<table class="w-full"><thead><tr><th>Date</th><th>Weight</th><th>Body Fat %</th><th>SMM %</th></tr></thead><tbody>`;
+    (client.progress || []).forEach(p => {
+        html += `<tr><td>${p.date}</td><td>${p.weight || "—"}</td><td>${p.bodyFat || "—"}</td><td>${p.smm || "—"}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    document.getElementById("progress-area").innerHTML = html || "<p class='text-zinc-500'>No progress logged</p>";
+}
+// ==================== COACHES ====================
+function showCoachModal(id = null) {
+    if (currentUser.role !== "admin") return alert("Admin only");
+    editingCoachId = id;
+    document.getElementById("coach-modal-title").textContent = id ? "Edit Coach" : "Add New Coach";
+    document.getElementById("coach-modal").classList.remove("hidden");
+}
+function saveCoach() {
+    const data = {
+        name: document.getElementById("coach-name").value.trim(),
+        username: document.getElementById("coach-username").value.trim().toLowerCase(),
+        password: document.getElementById("coach-password").value,
+        age: parseInt(document.getElementById("coach-age").value),
+        contact: document.getElementById("coach-contact").value.trim()
+    };
+    if (editingCoachId) {
+        const coach = trainers.find(t => t.id === editingCoachId);
+        Object.assign(coach, data);
+    } else {
+        data.id = Date.now();
+        trainers.push(data);
+    }
+    saveData();
+    hideModal("coach-modal");
+    renderAll();
+}
+function renderCoachesTable() {
+    let html = `<thead><tr class="border-b"><th class="py-6 px-6 text-left">Name</th><th class="py-6 px-6 text-left">Username</th><th class="py-6 px-6 text-left">Clients</th><th class="py-6 px-6 text-center">Actions</th></tr></thead><tbody>`;
+    trainers.forEach(t => {
+        const count = clients.filter(c => c.trainerId === t.id).length;
+        html += `<tr class="border-b">
+            <td class="py-6 px-6">${t.name}</td>
+            <td class="py-6 px-6">${t.username}</td>
+            <td class="py-6 px-6">${count}</td>
+            <td class="py-6 px-6 text-center">
+                <button onclick="showCoachModal(${t.id})" class="text-blue-400">Edit</button>
+                <button onclick="deleteCoach(${t.id})" class="ml-4 text-red-400">Delete</button>
+            </td>
+        </tr>`;
+    });
+    html += `</tbody>`;
+    document.getElementById("coaches-table").innerHTML = html;
+}
+function deleteCoach(id) {
+    if (currentUser.role !== "admin") return;
+    if (confirm("Delete this coach permanently?")) {
+        trainers = trainers.filter(t => t.id !== id);
+        saveData();
+        renderAll();
+    }
+}
+// ==================== UTILITY ====================
+function hideModal(id) { document.getElementById(id).classList.add("hidden"); }
+function populateSelects() {
+    const visible = currentUser.role === "admin" ? clients : clients.filter(c => c.trainerId === currentUser.id);
+    const html = visible.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    document.getElementById("diet-select").innerHTML = html;
+    document.getElementById("workout-select").innerHTML = html;
+    document.getElementById("progress-select").innerHTML = html;
+}
+function renderAttendance() {
+    let html = attendanceLog.map(a => `<div class="py-4 border-b border-zinc-800">${a}</div>`).join('');
+    document.getElementById("attendance-list").innerHTML = html || "<p class='text-zinc-500 text-center py-10'>No check-ins today</p>";
+}
+function markCheckin() {
+    if (clients.length === 0) return alert("No clients");
+    const name = clients[Math.floor(Math.random()*clients.length)].name;
+    attendanceLog.unshift(`${name} • ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`);
+    saveData();
+    renderAttendance();
+    renderDashboard();
+}
+function renderLeaderboard() {
+    let ranked = trainers.map(t => {
+        const myC = clients.filter(c => c.trainerId === t.id);
+        let score = myC.length * 30;
+        myC.forEach(c => { if (c.progress) score += c.progress.length * 15; });
+        return {name: t.name, score};
+    }).sort((a,b) => b.score - a.score);
+    let html = `<thead><tr class="border-b"><th class="py-6 px-6 text-left">Rank</th><th class="py-6 px-6 text-left">Coach</th><th class="py-6 px-6 text-left">Score</th></tr></thead><tbody>`;
+    ranked.forEach((r,i) => {
+        html += `<tr class="border-b"><td class="py-6 px-6 text-3xl text-lime-400">${i+1}</td><td class="py-6 px-6">${r.name}</td><td class="py-6 px-6 font-bold text-emerald-400">${r.score}</td></tr>`;
+    });
+    html += `</tbody>`;
+    document.getElementById("leaderboard-table").innerHTML = html || "<tr><td colspan='3' class='py-10 text-center text-zinc-500'>No data yet</td></tr>";
+}
+function showMembershipModal() {
+    if (currentUser.role !== "admin") return alert("Admin only");
+    alert("Membership plan creation ready (expand later)");
+}
+</script>
+</body>
+</html>
